@@ -25,15 +25,15 @@ For questions and support please visit our [discussion forum](https://discuss.ba
 
 ## Want to report a bug or request a feature?
 
-> We are in the process of moving our issues from phabricator back to github issues! Check out https://github.com/babel/phabricator-to-github for more info
+Bugs and feature requests can be posted at https://github.com/babel/babel/issues.
 
-Bugs and feature requests should be posted at [phabricator.babeljs.io](https://phabricator.babeljs.io/).
+> We've moved our issues from phabricator back to github issues!
 
-> You can directly translate a github issue to phabricator; just add a T to the beginning of the issue.
+> You can use http://babeljs.io/phabricator-redirects/T7567 to be redirected to the corresponding Github issue.
 
 ```
 https://phabricator.babeljs.io/T2168
-corresponds to
+mostly corresponds to
 https://github.com/babel/babel/issues/2168
 ```
 
