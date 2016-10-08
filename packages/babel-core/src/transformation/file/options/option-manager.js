@@ -13,6 +13,7 @@ import config from "./config";
 import removed from "./removed";
 import buildConfigChain from "./build-config-chain";
 import path from "path";
+import validateNpmName from "validate-npm-package-name";
 
 type PluginObject = {
   pre?: Function;
@@ -123,7 +124,12 @@ export default class OptionManager {
 
       // allow plugins to be specified as strings
       if (typeof plugin === "string") {
-        let pluginLoc = resolve(`babel-plugin-${plugin}`, dirname) || resolve(plugin, dirname);
+        let pluginLoc;
+        const longhand = `babel-plugin-${plugin}`;
+        if (validateNpmName(longhand).validForOldPackages) {
+          pluginLoc = resolve(longhand, dirname);
+        }
+        pluginLoc = pluginLoc || resolve(plugin, dirname);
         if (pluginLoc) {
           plugin = require(pluginLoc);
         } else {
