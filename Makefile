@@ -26,6 +26,7 @@ clean: test-clean
 	rm -rf packages/babel-polyfill/dist
 	rm -rf coverage
 	rm -rf packages/*/npm-debug*
+	rm -rf .coverage-*
 
 test-clean:
 	rm -rf packages/*/test/tmp
@@ -48,7 +49,7 @@ test-ci:
 	NODE_ENV=test make bootstrap
 	# if ./node_modules/.bin/semver `npm --version` -r ">=3.3.0"; then ./node_modules/.bin/flow check; fi
 	./scripts/test-cov.sh
-	cat ./coverage/coverage.json | ./node_modules/codecov.io/bin/codecov.io.js
+	cat ./.coverage-*/coverage.json | ./node_modules/codecov.io/bin/codecov.io.js
 
 publish:
 	git pull --rebase
