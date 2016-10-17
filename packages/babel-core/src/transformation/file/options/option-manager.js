@@ -5,7 +5,7 @@ import type Logger from "../logger";
 import Plugin from "../../plugin";
 import * as messages from "babel-messages";
 import { normaliseOptions } from "./index";
-import resolve from "../../../helpers/resolve";
+import { resolveAll, expandAll } from "../../../helpers/resolve";
 import cloneDeepWith from "lodash/cloneDeepWith";
 import clone from "lodash/clone";
 import merge from "../../../helpers/merge";
@@ -123,11 +123,11 @@ export default class OptionManager {
 
       // allow plugins to be specified as strings
       if (typeof plugin === "string") {
-        let pluginLoc = resolve(`babel-plugin-${plugin}`, dirname) || resolve(plugin, dirname);
+        const pluginLoc = resolveAll(plugin, "babel-plugin", dirname);
         if (pluginLoc) {
           plugin = require(pluginLoc);
         } else {
-          throw new ReferenceError(messages.get("pluginUnknown", plugin, loc, i, dirname));
+          throw new ReferenceError(messages.get("pluginUnknown", expandAll(plugin, "babel-plugin"), loc, i, dirname));
         }
       }
 
@@ -261,21 +261,10 @@ export default class OptionManager {
       let presetLoc;
       try {
         if (typeof val === "string") {
-          presetLoc = resolve(`babel-preset-${val}`, dirname) || resolve(val, dirname);
-
-          // trying to resolve @organization shortcat
-          // @foo/es2015 -> @foo/babel-preset-es2015
-          if (!presetLoc) {
-            let matches = val.match(/^(@[^/]+)\/(.+)$/);
-            if (matches) {
-              let [, orgName, presetPath] = matches;
-              val = `${orgName}/babel-preset-${presetPath}`;
-              presetLoc = resolve(val, dirname);
-            }
-          }
+          presetLoc = resolveAll(val, "babel-preset", dirname);
 
           if (!presetLoc) {
-            throw new Error(`Couldn't find preset ${JSON.stringify(val)} relative to directory ` +
+            throw new Error(`Couldn't find preset ${JSON.stringify(expandAll(val, "babel-preset"))} relative to directory ` +
               JSON.stringify(dirname));
           }
 

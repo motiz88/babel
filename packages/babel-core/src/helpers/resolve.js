@@ -1,9 +1,11 @@
 import Module from "module";
 import path from "path";
+import validateNpmName from "validate-npm-package-name";
+import startsWith from "lodash/startsWith";
 
 let relativeModules = {};
 
-export default function (loc: string, relative: string = process.cwd()): ?string {
+export default function resolve (loc: string, relative: string = process.cwd()): ?string {
   // we're in the browser, probably
   if (typeof Module === "object") return null;
 
@@ -31,4 +33,56 @@ export default function (loc: string, relative: string = process.cwd()): ?string
   } catch (err) {
     return null;
   }
+}
+
+export function resolveAll (loc: string, prefix: string, relative: string = process.cwd()): ?string {
+  let resolved;
+
+  let expanded = expandShorthand(loc, prefix);
+  if (expanded !== loc) {
+    resolved = resolve(expanded, relative);
+  }
+
+  resolved = resolved || resolve(loc, relative);
+
+  if (!resolved) {
+    expanded = expandOrg(loc, prefix);
+    if (expanded !== loc) {
+      resolved = resolve(expanded, relative);
+    }
+  }
+  return resolved;
+}
+
+export function expandAll (loc: string, prefix: string): string {
+  let expanded = expandShorthand(loc, prefix);
+  if (expanded !== loc) return expanded;
+  return expandOrg(loc, prefix) || loc;
+}
+
+function expandShorthand (loc: string, prefix: string): string {
+  const prefix_ = prefix + "-";
+  if (!startsWith(loc, prefix_)) {
+    const expandedShortLoc = prefix_ + loc;
+    if (validateNpmName(expandedShortLoc).validForOldPackages) {
+      return expandedShortLoc;
+    }
+  }
+  return loc;
+}
+
+function expandOrg (loc: string, prefix: string): string {
+  // try to resolve @organization shortcut
+  // @foo/es2015 -> @foo/babel-preset-es2015
+  const prefix_ = prefix + "-";
+  if (loc[0] === "@") {
+    const matches = loc.match(/^(@[^/]+)\/(.+)$/);
+    if (matches) {
+      const [, orgName, subPath] = matches;
+      if (!startsWith(subPath, prefix_)) {
+        loc = `${orgName}/${prefix_}${subPath}`;
+      }
+    }
+  }
+  return loc;
 }
