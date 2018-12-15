@@ -20,7 +20,7 @@ import {
 } from "../util/whitespace";
 import State from "./state";
 
-const VALID_REGEX_FLAGS = "gmsiyu";
+const VALID_REGEX_FLAGS = "gmsiyux";
 
 // The following character codes are forbidden from being
 // an immediate sibling of NumericLiteralSeparator _
@@ -825,14 +825,18 @@ export default class Tokenizer extends LocationParser {
 
   readRegexp(): void {
     const start = this.state.pos;
-    let escaped, inClass;
+    let escaped, inClass, anyLineBreaks;
+    const regexpFreeSpacing = this.hasPlugin("regexpFreeSpacing");
     for (;;) {
       if (this.state.pos >= this.input.length) {
         this.raise(start, "Unterminated regular expression");
       }
       const ch = this.input.charAt(this.state.pos);
       if (lineBreak.test(ch)) {
-        this.raise(start, "Unterminated regular expression");
+        if (!regexpFreeSpacing) {
+          this.raise(start, "Unterminated regular expression");
+        }
+        anyLineBreaks = true;
       }
       if (escaped) {
         escaped = false;
@@ -872,6 +876,11 @@ export default class Tokenizer extends LocationParser {
       } else {
         break;
       }
+    }
+
+    const hasXFlag = mods.indexOf("x") !== -1;
+    if (anyLineBreaks && !hasXFlag) {
+      this.raise(start, "Unterminated regular expression");
     }
 
     this.finishToken(tt.regexp, {

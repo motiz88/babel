@@ -1,0 +1,38 @@
+{
+  "name": "@babel/plugin-transform-freespacing-regex",
+  "version": "7.2.0",
+  "description": "Compile regular expressions using the `x` (`freeSpacing`) flag to ES5.",
+  "homepage": "https://babeljs.io/",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "engines": {
+    "node": ">=4"
+  },
+  "keywords": [
+    "babel-plugin",
+    "regex",
+    "regexp",
+    "regular expressions",
+    "freespacing",
+    "whitespace",
+    "xregexp"
+  ],
+  "repository": "https://github.com/babel/babel/tree/master/packages/babel-plugin-transform-freespacing-regex",
+  "bugs": "https://github.com/babel/babel/issues",
+  "dependencies": {
+    "@babel/helper-plugin-utils": "^7.0.0",
+    "@babel/helper-regex": "^7.0.0",
+    "@babel/plugin-syntax-freespacing-regex": "^7.2.0",
+    "xregexp": "4.2.x"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.0.0-0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.2.0",
+    "@babel/helper-plugin-test-runner": "^7.0.0"
+  }
+}

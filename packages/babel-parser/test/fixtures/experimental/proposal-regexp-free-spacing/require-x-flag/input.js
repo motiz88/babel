@@ -1,0 +1,3 @@
+var a = /
+    nope
+/gimsuy;

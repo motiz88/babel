@@ -1,0 +1,4 @@
+{
+    "plugins": ["transform-freespacing-regex"],
+    "throws": "Invalid regular expression: /(?(?:)=)/: Invalid group"
+}
