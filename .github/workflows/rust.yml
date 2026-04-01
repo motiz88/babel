@@ -1,0 +1,40 @@
+name: Rust
+
+on:
+  push:
+    branches: [rust/generator-port]
+  pull_request:
+    branches: [main, rust/generator-port]
+    paths:
+      - "crates/**"
+      - "rust-toolchain.toml"
+      - ".github/workflows/rust.yml"
+
+jobs:
+  check:
+    name: Check & Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - name: cargo check
+        run: cd crates && cargo check --all-targets
+      - name: cargo clippy
+        run: cd crates && cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - name: cargo test
+        run: cd crates && cargo test --all

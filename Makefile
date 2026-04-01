@@ -19,8 +19,11 @@ MAKEJS := node Makefile.js
 Makefile.js: Makefile.source.ts yarn.lock .yarn/install-state.gz
 	$(NODE) ./scripts/pack-script.ts
 
-build:
+build: build-rust
 	$(MAKEJS) build
+
+build-rust:
+	@./scripts/build-rust.sh
 
 build-bundle:
 	$(MAKEJS) build-bundle

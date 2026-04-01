@@ -1,0 +1,8 @@
+[package]
+name = "babel-napi-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+napi = { version = "2", features = ["napi8"] }
+napi-derive = "2"

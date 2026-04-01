@@ -1,3 +1,4 @@
+import { createRequire } from "module";
 import SourceMap from "./source-map.ts";
 import Printer from "./printer.ts";
 import type * as t from "@babel/types";
@@ -221,17 +222,15 @@ export interface GeneratorResult {
   rawMappings: Mapping[] | undefined;
 }
 
-/**
- * Turns an AST into code, maintaining sourcemaps, user preferences, and valid output.
- * @param ast - the abstract syntax tree from which to generate output code.
- * @param opts - used for specifying options for code generation.
- * @param code - the original source code, used for source maps.
- * @returns - an object containing the output code and source map.
- */
-export function generate(
+function _useRust(opts: GeneratorOptions): boolean {
+  if ((opts as any).useNative) return true;
+  return process.env.BABEL_RUST_GENERATOR === "1";
+}
+
+function _generateJS(
   ast: t.Node,
-  opts: GeneratorOptions = {},
-  code?: string | Record<string, string>,
+  opts: GeneratorOptions,
+  code: string | Record<string, string> | undefined,
 ): GeneratorResult {
   const format = normalizeOptions(code, opts, ast);
   const map = opts.sourceMaps ? new SourceMap(opts, code) : null;
@@ -244,6 +243,40 @@ export function generate(
   );
 
   return printer.generate(ast);
+}
+
+/**
+ * Turns an AST into code, maintaining sourcemaps, user preferences, and valid output.
+ * @param ast - the abstract syntax tree from which to generate output code.
+ * @param opts - used for specifying options for code generation.
+ * @param code - the original source code, used for source maps.
+ * @returns - an object containing the output code and source map.
+ */
+export function generate(
+  ast: t.Node,
+  opts: GeneratorOptions = {},
+  code?: string | Record<string, string>,
+): GeneratorResult {
+  if (_useRust(opts)) {
+    let native: any;
+    try {
+      const require = createRequire(import.meta.url);
+      native = require("./native.cjs").loadNativeBinding();
+    } catch (e: any) {
+      throw new Error(
+        "@babel/generator: BABEL_RUST_GENERATOR=1 is set but the native addon " +
+          `could not be loaded: ${e.message}. Run \`scripts/build-rust.sh\` to build it.`,
+      );
+    }
+    if (!native) {
+      throw new Error(
+        "@babel/generator: BABEL_RUST_GENERATOR=1 is set but the native addon " +
+          "could not be loaded. Run `scripts/build-rust.sh` to build it.",
+      );
+    }
+    return native.generate(ast, opts || {}, code || "", _generateJS);
+  }
+  return _generateJS(ast, opts, code);
 }
 
 export default generate;
