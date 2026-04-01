@@ -149,38 +149,50 @@ NODE_OPTIONS="--experimental-strip-types" yarn jest packages/babel-generator --w
 
 ## Pipeline Impact Assessment
 
-### Results (100 iterations, medians)
+### Parse + Generate Only (100 iterations, medians)
 
-| Workload | Bytes | Parse ms | Gen ms | Total ms | Gen% | Amdahl | @10x |
-|----------|------:|---------:|-------:|---------:|-----:|-------:|-----:|
-| parser expression.ts (large) | 99,386 | 5.065 | 2.272 | 7.338 | 31.0% | 1.45 | 1.39 |
-| types validators (large) | 191,338 | 10.064 | 4.941 | 15.005 | 32.9% | 1.49 | 1.42 |
-| types builders (generated) | 5,791 | 0.090 | 0.053 | 0.143 | 36.8% | 1.58 | 1.50 |
-| generator printer.ts | 40,312 | 1.717 | 0.934 | 2.651 | 35.2% | 1.54 | 1.46 |
-| generator typescript.ts | 19,012 | 0.864 | 0.471 | 1.334 | 35.3% | 1.54 | 1.47 |
-| generator flow.ts | 16,662 | 0.675 | 0.394 | 1.069 | 36.9% | 1.58 | 1.50 |
-| core transform-file.ts | 1,901 | 0.067 | 0.033 | 0.100 | 32.9% | 1.49 | 1.42 |
-| parser tokenizer | 47,097 | 1.871 | 1.041 | 2.913 | 35.8% | 1.56 | 1.47 |
+| Workload | Bytes | Parse ms | Gen ms | Total ms | Gen% |
+|----------|------:|---------:|-------:|---------:|-----:|
+| parser expression.ts (99KB) | 99,386 | 5.07 | 2.27 | 7.34 | 31.0% |
+| types validators (191KB) | 191,338 | 10.06 | 4.94 | 15.01 | 32.9% |
+| generator printer.ts (40KB) | 40,312 | 1.72 | 0.93 | 2.65 | 35.2% |
+| generator typescript.ts (19KB) | 19,012 | 0.86 | 0.47 | 1.33 | 35.3% |
+| parser tokenizer (47KB) | 47,097 | 1.87 | 1.04 | 2.91 | 35.8% |
+
+Generator is **31-36% of parse+generate** (median 34.5%, down from 68.8% in v7.10).
+
+### Full Pipeline: Parse + Transform + Generate (50 iterations, medians)
+
+| Workload | Bytes | Parse ms | Transform ms | Gen ms | Total ms | P% | X% | G% | @10x |
+|----------|------:|---------:|-------------:|-------:|---------:|---:|---:|---:|-----:|
+| parser expression.ts (99KB) | 99,386 | 6.99 | 25.37 | 2.37 | 34.74 | 20% | 73% | 7% | 1.07 |
+| types validators (191KB) | 191,338 | 10.90 | 62.00 | 2.26 | 75.16 | 14% | 82% | 3% | 1.03 |
+| generator printer.ts (40KB) | 40,312 | 3.42 | 15.05 | 1.69 | 20.17 | 17% | 75% | 8% | 1.08 |
+| generator typescript.ts (19KB) | 19,012 | 1.21 | 7.94 | 0.63 | 9.77 | 12% | 81% | 6% | 1.06 |
+| parser tokenizer (47KB) | 47,097 | 3.15 | 15.06 | 1.49 | 19.69 | 16% | 76% | 8% | 1.07 |
+| synthetic arrows (100 fns) | 3,480 | 0.59 | 2.23 | 0.24 | 3.05 | 19% | 73% | 8% | 1.08 |
+| synthetic comments (100) | 4,260 | 0.22 | 0.95 | 0.11 | 1.27 | 17% | 75% | 8% | 1.08 |
+| synthetic pseudo-JSX (50) | 3,065 | 0.41 | 1.51 | 0.16 | 2.08 | 20% | 73% | 8% | 1.07 |
+
+Transform used: `@babel/preset-typescript` (TS type stripping) for .ts files, identity transform for .js files.
 
 ### Analysis
 
-**Generator fraction**: Median **34.5%** of parse+generate (down from 68.8% in v7.10).
+**Generator fraction of full pipeline**: **3-8%** (median ~7%).
 
-The generator was **significantly optimized** between v7.10 and v8.0:
-- Buffer rewrite eliminated array-of-strings and queue overhead
-- Charcode-based comparisons replaced string `endsWith()` checks
-- Comment handling was rewritten with bitflag state machines
-- Whitespace logic was simplified
+**Transform dominates** at 73-82% of total pipeline time, even with minimal transforms (just TS type stripping). Parse is 12-20%. Generator is a single-digit fraction.
 
-**Amdahl's law implications**:
-- 10x generator speedup → only **1.4-1.5x** end-to-end speedup on parse+generate
-- The parser now dominates at ~65% of pipeline time
-- End-to-end gains from generator optimization alone are more modest
+**Amdahl's law**: Even a 10x generator speedup yields only **1.03-1.08x** end-to-end improvement on the full pipeline. An infinitely fast generator would give at most 1.08x speedup.
 
-**This means the Rust port strategy should prioritize**:
-1. Low overhead AST access (marshaling cost must be minimal)
-2. Generator-only benchmarks rather than end-to-end (to measure actual improvement)
-3. Kernel replacements (Phase 6) may be more impactful since they avoid marshaling
+**Key implications for the Rust port strategy**:
+
+1. **Generator-only speedup is the meaningful metric.** End-to-end improvement from generator optimization alone is negligible. The value of a Rust generator is in isolation: faster `generate()` calls for use cases that call it directly (e.g., code formatting, AST manipulation tools, hot module replacement).
+
+2. **AST marshaling overhead is critical.** If marshaling the AST to Rust costs even 1-2ms, it could negate the generator speedup entirely. The winning strategy must have near-zero marshaling overhead.
+
+3. **Kernel replacements (Phase 6) remain viable.** Replacing hot internal components (buffer, source map encoding) avoids marshaling entirely and can speed up the TS generator without a full port.
+
+4. **Full pipeline speedup requires porting more than just the generator.** To get meaningful end-to-end gains, the parser and/or transform pipeline would also need optimization.
 
 ---
 
@@ -205,7 +217,7 @@ The generator was **significantly optimized** between v7.10 and v8.0:
 
 ## Open Questions / Risks
 
-1. **Lower generator fraction** means less end-to-end impact. Strategy F (kernel replacements) or reducing marshaling overhead becomes even more critical.
+1. **Generator is only 3-8% of full pipeline** (parse+transform+generate). End-to-end impact is minimal. The Rust port's value is in generator-only speedup for direct `generate()` callers, or as groundwork for porting more of the pipeline.
 
 2. **`__node()` global function**: The codebase uses `declare global { function __node(type: string): number; }` — this is likely compile-time-replaced. Need to understand how this works for the Rust port.
 

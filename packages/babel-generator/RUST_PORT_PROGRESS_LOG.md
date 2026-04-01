@@ -18,11 +18,13 @@ NODE_OPTIONS="--experimental-strip-types" yarn jest packages/babel-generator --w
 ```
 
 ### Pipeline impact summary
-- Generator fraction: 31-37% of parse+generate (median 34.5%)
-- Significantly lower than v7.10 (68.8%) due to generator optimizations in v8
-- 10x generator speedup → only 1.4-1.5x end-to-end speedup
-- Parser now dominates at ~65% of pipeline time
-- Strategy implications: kernel replacements or low-overhead marshaling even more important
+- **Parse+generate only**: generator is 31-37% (median 34.5%), down from 68.8% in v7.10
+- **Full pipeline (parse+transform+generate)**: generator is only **3-8%** (median ~7%)
+  - Transform dominates at 73-82% (even with just TS type stripping)
+  - Parse is 12-20%
+- 10x generator speedup → only 1.03-1.08x full-pipeline speedup (Amdahl's law)
+- Generator-only speedup is the meaningful metric for this port
+- AST marshaling overhead is critical — must be near-zero to not negate gains
 
 ### Phase 2: Rust Infrastructure (Complete)
 - Cargo workspace at crates/ with babel-napi-utils and babel-generator
